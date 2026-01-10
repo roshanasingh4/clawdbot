@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
+import { GATEWAY_CLIENT_MODES } from "../utils/message-provider.js";
 
 type OpenAIResponsesParams = {
   input?: unknown[];
@@ -246,7 +247,7 @@ async function connectClient(params: { url: string; token: string }) {
         token: params.token,
         clientName: "vitest-mock-openai",
         clientVersion: "dev",
-        mode: "test",
+        mode: GATEWAY_CLIENT_MODES.TEST,
         onHelloOk: () => stop(undefined, client),
         onConnectError: (err) => stop(err),
         onClose: (code, reason) =>

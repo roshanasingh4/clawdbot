@@ -107,7 +107,10 @@ import {
   type ProviderId,
 } from "../providers/plugins/index.js";
 import { defaultRuntime, type RuntimeEnv } from "../runtime.js";
-import { isWebchatClient } from "../utils/message-provider.js";
+import {
+  isGatewayCliClient,
+  isWebchatClient,
+} from "../utils/message-provider.js";
 import { runOnboardingWizard } from "../wizard/onboarding.js";
 import type { WizardSession } from "../wizard/session.js";
 import {
@@ -1481,7 +1484,7 @@ export async function startGatewayServer(
           }
           const authMethod = authResult.method ?? "none";
 
-          const shouldTrackPresence = connectParams.client.mode !== "cli";
+          const shouldTrackPresence = !isGatewayCliClient(connectParams.client);
           const presenceKey = shouldTrackPresence
             ? connectParams.client.instanceId || connId
             : undefined;

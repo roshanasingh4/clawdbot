@@ -43,6 +43,10 @@ import {
 } from "../logging.js";
 import { defaultRuntime } from "../runtime.js";
 import { colorize, isRich, theme } from "../terminal/theme.js";
+import {
+  GATEWAY_CLIENT_MODES,
+  GATEWAY_CLIENT_NAMES,
+} from "../utils/message-provider.js";
 import { resolveUserPath } from "../utils.js";
 import { forceFreePortAndWait } from "./ports.js";
 import { withProgress } from "./progress.js";
@@ -523,8 +527,8 @@ const callGatewayCli = async (
         params,
         expectFinal: Boolean(opts.expectFinal),
         timeoutMs: Number(opts.timeout ?? 10_000),
-        clientName: "cli",
-        mode: "cli",
+        clientName: GATEWAY_CLIENT_NAMES.CLI,
+        mode: GATEWAY_CLIENT_MODES.CLI,
       }),
   );
 

@@ -3,6 +3,10 @@ import type { Command } from "commander";
 import { callGateway, randomIdempotencyKey } from "../gateway/call.js";
 import { defaultRuntime } from "../runtime.js";
 import {
+  GATEWAY_CLIENT_MODES,
+  GATEWAY_CLIENT_NAMES,
+} from "../utils/message-provider.js";
+import {
   type CameraFacing,
   cameraTempPath,
   parseCameraClipPayload,
@@ -150,8 +154,8 @@ const callGatewayCli = async (
         method,
         params,
         timeoutMs: Number(opts.timeout ?? 10_000),
-        clientName: "cli",
-        mode: "cli",
+        clientName: GATEWAY_CLIENT_NAMES.CLI,
+        mode: GATEWAY_CLIENT_MODES.CLI,
       }),
   );
 

@@ -49,6 +49,10 @@ import { pickPrimaryTailnetIPv4 } from "../infra/tailnet.js";
 import { getResolvedLoggerSettings } from "../logging.js";
 import { defaultRuntime } from "../runtime.js";
 import { colorize, isRich, theme } from "../terminal/theme.js";
+import {
+  GATEWAY_CLIENT_MODES,
+  GATEWAY_CLIENT_NAMES,
+} from "../utils/message-provider.js";
 import { createDefaultDeps } from "./deps.js";
 import { withProgress } from "./progress.js";
 
@@ -235,8 +239,8 @@ async function probeGatewayStatus(opts: {
           password: opts.password,
           method: "status",
           timeoutMs: opts.timeoutMs,
-          clientName: "cli",
-          mode: "cli",
+          clientName: GATEWAY_CLIENT_NAMES.CLI,
+          mode: GATEWAY_CLIENT_MODES.CLI,
           ...(opts.configPath ? { configPath: opts.configPath } : {}),
         }),
     );
