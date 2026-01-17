@@ -12,7 +12,7 @@ export type EmbeddingProvider = {
 
 export type EmbeddingProviderResult = {
   provider: EmbeddingProvider;
-  requestedProvider: "openai" | "local";
+  requestedProvider: "openai" | "openai-codex" | "local";
   fallbackFrom?: "local";
   fallbackReason?: string;
 };
@@ -20,7 +20,7 @@ export type EmbeddingProviderResult = {
 export type EmbeddingProviderOptions = {
   config: ClawdbotConfig;
   agentDir?: string;
-  provider: "openai" | "local";
+  provider: "openai" | "openai-codex" | "local";
   remote?: {
     baseUrl?: string;
     apiKey?: string;
@@ -51,13 +51,18 @@ async function createOpenAiEmbeddingProvider(
   const remoteApiKey = remote?.apiKey?.trim();
   const remoteBaseUrl = remote?.baseUrl?.trim();
 
-  const { apiKey } = remoteApiKey
-    ? { apiKey: remoteApiKey }
-    : await resolveApiKeyForProvider({
-        provider: "openai",
-        cfg: options.config,
-        agentDir: options.agentDir,
-      });
+  const initial = remoteApiKey
+    ? { apiKey: remoteApiKey, providerId: "remote" as const }
+    : {
+        ...(await resolveApiKeyForProvider({
+          provider: options.provider === "openai-codex" ? "openai-codex" : "openai",
+          cfg: options.config,
+          agentDir: options.agentDir,
+        })),
+        providerId: options.provider,
+      };
+
+  const apiKey = initial.apiKey;
 
   const providerConfig = options.config.models?.providers?.openai;
   const baseUrl = remoteBaseUrl || providerConfig?.baseUrl?.trim() || DEFAULT_OPENAI_BASE_URL;
@@ -70,17 +75,66 @@ async function createOpenAiEmbeddingProvider(
   };
   const model = normalizeOpenAiModel(options.model);
 
-  const embed = async (input: string[]): Promise<number[][]> => {
-    if (input.length === 0) return [];
+  const parseBodyText = async (res: Response) => {
+    try {
+      return await res.text();
+    } catch {
+      return "";
+    }
+  };
+
+  const isInsufficientQuota429 = (status: number, bodyText: string) => {
+    if (status !== 429) return false;
+    const lower = bodyText.toLowerCase();
+    return lower.includes("insufficient_quota") || lower.includes("exceeded your current quota");
+  };
+
+  const fetchEmbedding = async (apiKey: string, input: string[]) => {
     const res = await fetch(url, {
       method: "POST",
-      headers,
+      headers: { ...headers, Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({ model, input }),
     });
+    return res;
+  };
+
+  let codexFallbackAttempted = false;
+  const embed = async (input: string[]): Promise<number[][]> => {
+    if (input.length === 0) return [];
+
+    let res = await fetchEmbedding(apiKey, input);
     if (!res.ok) {
-      const text = await res.text();
+      const text = await parseBodyText(res);
+
+      // If OPENAI_API_KEY is out of quota but the user has openai-codex OAuth
+      // configured (commonly used for chat), try it as a fallback.
+      if (
+        !remoteApiKey &&
+        !codexFallbackAttempted &&
+        initial.providerId === "openai" &&
+        isInsufficientQuota429(res.status, text)
+      ) {
+        codexFallbackAttempted = true;
+        try {
+          const { apiKey: codexKey } = await resolveApiKeyForProvider({
+            provider: "openai-codex",
+            cfg: options.config,
+            agentDir: options.agentDir,
+          });
+          res = await fetchEmbedding(codexKey, input);
+          if (res.ok) {
+            const payload = (await res.json()) as { data?: Array<{ embedding?: number[] }> };
+            const data = payload.data ?? [];
+            return data.map((entry) => entry.embedding ?? []);
+          }
+        } catch {
+          // ignore and surface original error below
+        }
+      }
+
       throw new Error(`openai embeddings failed: ${res.status} ${text}`);
     }
+
     const payload = (await res.json()) as {
       data?: Array<{ embedding?: number[] }>;
     };

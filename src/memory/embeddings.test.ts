@@ -107,6 +107,68 @@ describe("embedding provider remote overrides", () => {
     const headers = (fetchMock.mock.calls[0]?.[1]?.headers as Record<string, string>) ?? {};
     expect(headers.Authorization).toBe("Bearer provider-key");
   });
+
+  it("tries openai-codex when openai is out of quota", async () => {
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      const headers = (init?.headers ?? {}) as Record<string, string>;
+      if (headers.Authorization === "Bearer provider-key") {
+        return {
+          ok: false,
+          status: 429,
+          text: async () =>
+            JSON.stringify({
+              error: {
+                message: "You exceeded your current quota",
+                type: "insufficient_quota",
+                code: "insufficient_quota",
+              },
+            }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ data: [{ embedding: [1, 2, 3] }] }),
+      };
+    }) as unknown as typeof fetch;
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { createEmbeddingProvider } = await import("./embeddings.js");
+    const authModule = await import("../agents/model-auth.js");
+    vi.mocked(authModule.resolveApiKeyForProvider).mockImplementation(async (params) => {
+      const provider = (params as { provider?: string }).provider;
+      if (provider === "openai-codex") return { apiKey: "codex-key" };
+      return { apiKey: "provider-key" };
+    });
+
+    const cfg = {
+      models: {
+        providers: {
+          openai: {
+            baseUrl: "https://provider.example/v1",
+          },
+        },
+      },
+    };
+
+    const result = await createEmbeddingProvider({
+      config: cfg as never,
+      provider: "openai",
+      model: "text-embedding-3-small",
+      fallback: "openai",
+    });
+
+    await expect(result.provider.embedQuery("hello")).resolves.toEqual([1, 2, 3]);
+
+    expect(authModule.resolveApiKeyForProvider).toHaveBeenCalledTimes(2);
+    const authHeaders = fetchMock.mock.calls.map((call) => {
+      const init = call[1] as RequestInit | undefined;
+      const headers = (init?.headers ?? {}) as Record<string, string>;
+      return headers.Authorization;
+    });
+    expect(authHeaders).toEqual(["Bearer provider-key", "Bearer codex-key"]);
+  });
 });
 
 describe("embedding provider local fallback", () => {

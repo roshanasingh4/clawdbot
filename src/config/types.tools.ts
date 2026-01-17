@@ -121,7 +121,7 @@ export type MemorySearchConfig = {
   /** Enable vector memory search (default: true). */
   enabled?: boolean;
   /** Embedding provider mode. */
-  provider?: "openai" | "local";
+  provider?: "openai" | "openai-codex" | "local";
   remote?: {
     baseUrl?: string;
     apiKey?: string;

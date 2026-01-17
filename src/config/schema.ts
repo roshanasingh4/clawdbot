@@ -345,7 +345,7 @@ const FIELD_HELP: Record<string, string> = {
   "agents.defaults.models": "Configured model catalog (keys are full provider/model IDs).",
   "agents.defaults.memorySearch":
     "Vector search over MEMORY.md and memory/*.md (per-agent overrides supported).",
-  "agents.defaults.memorySearch.provider": 'Embedding provider ("openai" or "local").',
+  "agents.defaults.memorySearch.provider": 'Embedding provider ("openai", "openai-codex", or "local").',
   "agents.defaults.memorySearch.remote.baseUrl":
     "Custom OpenAI-compatible base URL (e.g. for Gemini/OpenRouter proxies).",
   "agents.defaults.memorySearch.remote.apiKey": "Custom API key for the remote embedding provider.",

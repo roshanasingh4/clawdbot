@@ -8,7 +8,7 @@ import { resolveAgentConfig } from "./agent-scope.js";
 
 export type ResolvedMemorySearchConfig = {
   enabled: boolean;
-  provider: "openai" | "local";
+  provider: "openai" | "openai-codex" | "local";
   remote?: {
     baseUrl?: string;
     apiKey?: string;
